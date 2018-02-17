@@ -4,90 +4,28 @@ Spyder Editor
 
 This is a temporary script file.
 """
-
-from flask import Flask, request, jsonify
+from flask import Flask, request
+from flask_restful import Resource, Api
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from models import Base, Puppy
+from json import dumps
 
-engine = create_engine('sqlite:///puppies.db')
-Base.metadata.bind = engine
+#Create a engine for connecting to SQLite3.
+#Assuming salaries.db is in your app root folder
 
-DBSession = sessionmaker(bind=engine)
-session = DBSession()
+e = create_engine('sqlite:///subset_track_metadata.db')
 
-app = Flask(__name__) 
+app = Flask(__name__)
+api = Api(app)
 
-# Create the appropriate app.route functions, 
-#test and see if they work
-
-
-#Make an app.route() decorator here
-@app.route("/")
-@app.route("/puppies", methods = ['GET', 'POST'])
-def puppiesFunction():
-  if request.method == 'GET':
-    #Call the method to Get all of the puppies
-    return getAllPuppies()
-  elif request.method == 'POST':
-    #Call the method to make a new puppy
-    print "Making a New puppy"
-    
-    name = request.args.get('name', '')
-    description = request.args.get('description', '')
-    print name
-    print description
-    return makeANewPuppy(name, description)
+class Get_Song(Resource):
+    def get(self, artist_name):
+        conn = e.connect()
+        query = conn.execute("select title from songs where artist_name='%s'"%artist_name)
+        #Query the result and get cursor.Dumping that data to a JSON is looked by extension
+        result = {'data': [dict(zip(tuple (query.keys()) ,i)) for i in query.cursor]}
+        return result
  
-  
- 
-#Make another app.route() decorator here that takes in an integer id in the URI
-@app.route("/puppies/<int:id>", methods = ['GET', 'PUT', 'DELETE'])
-#Call the method to view a specific puppy
-def puppiesFunctionId(id):
-  if request.method == 'GET':
-    return getPuppy(id)
-    
-#Call the method to edit a specific puppy  
-  elif request.method == 'PUT':
-    name = request.args.get('name', '')
-    description = request.args.get('description', '')
-    return updatePuppy(id,name, description)
-    
- #Call the method to remove a puppy 
-  elif request.method == 'DELETE':
-    return deletePuppy(id)
-
-def getAllPuppies():
-  puppies = session.query(Puppy).all()
-  return jsonify(Puppies=[i.serialize for i in puppies])
-
-def getPuppy(id):
-  puppy = session.query(Puppy).filter_by(id = id).one()
-  return jsonify(puppy=puppy.serialize) 
-  
-def makeANewPuppy(name,description):
-  puppy = Puppy(name = name, description = description)
-  session.add(puppy)
-  session.commit()
-  return jsonify(Puppy=puppy.serialize)
-
-def updatePuppy(id,name, description):
-  puppy = session.query(Puppy).filter_by(id = id).one()
-  if not name:
-    puppy.name = name
-  if not description:
-    puppy.description = description
-  session.add(puppy)
-  session.commit()
-  return "Updated a Puppy with id %s" % id
-
-def deletePuppy(id):
-  puppy = session.query(Puppy).filter_by(id = id).one()
-  session.delete(puppy)
-  session.commit()
-  return "Removed Puppy with id %s" % id
-
+api.add_resource(Get_Song, '/song/<string:artist_name>')
 
 if __name__ == '__main__':
     app.debug = False
